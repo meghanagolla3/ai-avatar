@@ -1,0 +1,71 @@
+// Optimized Prisma schema with performance indexes
+// This file contains the same schema but with added indexes for performance
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  sessions  Session[]
+
+  // Performance indexes
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  mode      String
+  createdAt DateTime @default(now())
+  messages  Message[]
+  summaries ConversationSummary[]
+
+  // Performance indexes
+  @@index([userId])
+  @@index([mode])
+  @@index([createdAt])
+  @@index([userId, createdAt]) // Composite index for user sessions
+  @@index([mode, createdAt]) // Composite index for mode filtering
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  role      String   // "user" | "assistant"
+  content   String
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  createdAt DateTime @default(now())
+  audioUrl String?  // Optional audio URL for TTS
+
+  // Performance indexes
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([role])
+  @@index([sessionId, createdAt]) // Composite index for message ordering
+  @@index([sessionId, role]) // Composite index for role filtering
+}
+
+model ConversationSummary {
+  id          String   @id @default(uuid())
+  sessionId   String   @unique
+  summary     String
+  messageCount Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  session     Session  @relation(fields: [sessionId], references: [id])
+
+  // Performance indexes
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([messageCount])
+}
